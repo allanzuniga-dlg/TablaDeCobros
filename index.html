@@ -374,19 +374,19 @@
           <input type="time" id="horaFin" value="17:00" onchange="calcular()">
         </div>
 
-        <div class="form-group" style="grid-column:1/-1">
+        <div class="form-group">
           <label>Feriado</label>
-          <div class="oncall-row" style="background:#fff3e0;border-color:#ffcc80" onclick="toggleFeriado()">
+          <div class="oncall-row" style="background:#fff3e0;border-color:#ffcc80;height:100%;align-items:center" onclick="toggleFeriado()">
             <input type="checkbox" id="isFeriado" onchange="calcular()" style="accent-color:#e65100">
             <label for="isFeriado" style="color:#bf360c">🎉 Día feriado</label>
           </div>
         </div>
 
-        <div class="form-group" style="grid-column:1/-1">
+        <div class="form-group">
           <label>Modalidad</label>
-          <div class="oncall-row" onclick="toggleOnCall()">
+          <div class="oncall-row" style="height:100%;align-items:center" onclick="toggleOnCall()">
             <input type="checkbox" id="isOnCall" onchange="calcular()">
-            <label for="isOnCall">🔔 On Call (solo disponibilidad)</label>
+            <label for="isOnCall">🔔 On Call</label>
           </div>
         </div>
       </div>
@@ -993,6 +993,7 @@ function inicializarFecha() {
   const dd = String(hoy.getDate()).padStart(2, '0');
   document.getElementById('fechaSeleccionada').value = `${yyyy}-${mm}-${dd}`;
   document.getElementById('diaSemana').value = JS_DAY_MAP[hoy.getDay()];
+  calcular();
 }
 
 // ──────────────────────────────────────────
