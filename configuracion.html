@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuración — Cálculo de cobro</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #eef0f5;
+      color: #2d3748;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+      color: #fff;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+      flex-shrink: 0;
+      gap: 16px;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .header-left h1 { font-size: 1.3rem; font-weight: 700; }
+    .header-left span { color: rgba(255,255,255,0.5); font-size: 1.1rem; }
+    .header-left .page-title { font-size: 1rem; font-weight: 500; color: rgba(255,255,255,0.85); }
+
+    .btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 16px;
+      background: rgba(255,255,255,0.15);
+      border: 1.5px solid rgba(255,255,255,0.35);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .btn-back:hover { background: rgba(255,255,255,0.28); }
+
+    /* ── LAYOUT PRINCIPAL ── */
+    .page-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── SIDEBAR DE NAVEGACIÓN ── */
+    .sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: #fff;
+      border-right: 1.5px solid #e0e7ef;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .sidebar-section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #90a4ae;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      padding: 18px 18px 8px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 18px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #455a64;
+      border-left: 3px solid transparent;
+      transition: all 0.18s;
+      user-select: none;
+    }
+    .nav-item:hover { background: #f0f2ff; color: #3949ab; border-left-color: #c5cae9; }
+    .nav-item.active { background: #e8eaf6; color: #1a237e; border-left-color: #3949ab; }
+    .nav-item .nav-icon { font-size: 1.15rem; width: 24px; text-align: center; flex-shrink: 0; }
+    .nav-item .nav-label { flex: 1; }
+    .nav-item .nav-count {
+      background: #e8eaf6;
+      color: #3949ab;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 20px;
+    }
+    .nav-item.active .nav-count { background: #3949ab; color: #fff; }
+
+    .sidebar-divider { height: 1px; background: #e0e0e0; margin: 8px 14px; }
+
+    /* ── CONTENIDO PRINCIPAL ── */
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 32px;
+      background: #f4f6fb;
+    }
+
+    /* ── PANES ── */
+    .config-pane { display: none; }
+    .config-pane.active { display: block; }
+
+    .pane-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .pane-header h2 { font-size: 1.2rem; font-weight: 700; color: #1a237e; }
+    .pane-header p  { font-size: 0.83rem; color: #78909c; margin-top: 3px; }
+
+    /* ── CARD ── */
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 22px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      margin-bottom: 20px;
+    }
+    .card:last-child { margin-bottom: 0; }
+
+    /* ── FORMULARIOS ── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+    .form-group:last-child { margin-bottom: 0; }
+    .form-group label { font-size: 0.8rem; font-weight: 600; color: #546e7a; }
+    .form-group select,
+    .form-group input[type="time"],
+    .form-group input[type="text"],
+    .form-group input[type="number"] {
+      padding: 9px 12px;
+      border: 1.5px solid #cfd8dc;
+      border-radius: 9px;
+      font-size: 0.88rem;
+      background: #fafafa;
+      color: #2d3748;
+      width: 100%;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-group select:focus,
+    .form-group input:focus {
+      outline: none;
+      border-color: #3949ab;
+      box-shadow: 0 0 0 3px rgba(57,73,171,0.12);
+      background: #fff;
+    }
+
+    /* ── BOTONES ── */
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.83rem;
+      font-weight: 600;
+      transition: all 0.18s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-primary { background: #3949ab; color: #fff; }
+    .btn-primary:hover { background: #283593; }
+    .btn-success { background: #2e7d32; color: #fff; }
+    .btn-success:hover { background: #1b5e20; }
+    .btn-warning { background: #f57c00; color: #fff; }
+    .btn-warning:hover { background: #e65100; }
+    .btn-danger { background: #c62828; color: #fff; }
+    .btn-danger:hover { background: #b71c1c; }
+    .btn-ghost { background: transparent; color: #546e7a; border: 1.5px solid #cfd8dc; }
+    .btn-ghost:hover { background: #f5f5f5; }
+    .btn-sm { padding: 6px 13px; font-size: 0.8rem; }
+    .btn-xs { padding: 3px 9px; font-size: 0.74rem; border-radius: 6px; }
+
+    /* ── TABLA DE GESTIÓN ── */
+    .table-wrapper { overflow-x: auto; border-radius: 10px; border: 1px solid #e0e0e0; }
+    table.data-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+    table.data-table thead tr { background: #1a237e; }
+    table.data-table th {
+      color: #fff;
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 0.76rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+    }
+    table.data-table td { padding: 9px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+    table.data-table tbody tr:hover { background: #f9f9ff; }
+    table.data-table tbody tr:last-child td { border-bottom: none; }
+
+    /* ── TAGS / BADGES ── */
+    .tag {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 0.73rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .tag-regular       { background: #e3f2fd; color: #1565c0; }
+    .tag-extraordinario{ background: #fff3e0; color: #bf360c; }
+    .tag-feriado       { background: #fce4ec; color: #880e4f; }
+    .tag-oncall        { background: #e8f5e9; color: #1b5e20; }
+
+    .mult-badge {
+      display: inline-block;
+      padding: 3px 11px;
+      border-radius: 20px;
+      font-size: 0.83rem;
+      font-weight: 800;
+    }
+    .mult-x02 { background: #f3e5f5; color: #6a1b9a; }
+    .mult-x1  { background: #e8f5e9; color: #2e7d32; }
+    .mult-x15 { background: #fff8e1; color: #e65100; }
+    .mult-x2  { background: #fce4ec; color: #c62828; }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 16px;
+      padding: 28px;
+      width: 540px;
+      max-width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    }
+    .modal h3 { font-size: 1.05rem; color: #1a237e; margin-bottom: 20px; font-weight: 700; }
+    .modal-footer {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 20px;
+      padding-top: 14px;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .dias-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      background: #f8f9fa;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1.5px solid #e0e0e0;
+    }
+    .dia-check { display: flex; align-items: center; gap: 5px; font-size: 0.8rem; cursor: pointer; }
+    .dia-check input { cursor: pointer; accent-color: #3949ab; }
+
+    /* ── GESTIÓN DE DATOS ── */
+    .data-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .note { font-size: 0.73rem; color: #78909c; margin-top: 8px; font-style: italic; }
+
+    /* ── ESTADO VACÍO ── */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #90a4ae;
+    }
+    .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
+    .empty-state p { font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<header>
+  <div class="header-left">
+    <h1>💵 Cálculo de cobro</h1>
+    <span>/</span>
+    <span class="page-title">⚙️ Configuración</span>
+  </div>
+  <a class="btn-back" href="index.html">← Volver al cálculo</a>
+</header>
+
+<!-- ═══════════════ BODY ═══════════════ -->
+<div class="page-body">
+
+  <!-- ── SIDEBAR ── -->
+  <nav class="sidebar">
+    <div class="sidebar-section-label">Secciones</div>
+
+    <div class="nav-item active" id="navCobro" onclick="switchPane('cobro')">
+      <span class="nav-icon">📑</span>
+      <span class="nav-label">Tabla de cobro</span>
+      <span class="nav-count" id="countCobro">0</span>
+    </div>
+
+    <div class="nav-item" id="navRegiones" onclick="switchPane('regiones')">
+      <span class="nav-icon">🌍</span>
+      <span class="nav-label">Config. regionales</span>
+      <span class="nav-count" id="countRegiones">0</span>
+    </div>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section-label">Datos</div>
+
+    <div class="nav-item" id="navDatos" onclick="switchPane('datos')">
+      <span class="nav-icon">💾</span>
+      <span class="nav-label">Gestión de datos</span>
+    </div>
+  </nav>
+
+  <!-- ── CONTENIDO ── -->
+  <main class="main-content">
+
+    <!-- PANE: Tabla de cobro -->
+    <div class="config-pane active" id="paneCobro">
+      <div class="pane-header">
+        <div>
+          <h2>📑 Tabla de cobro</h2>
+          <p>Agrega, edita o elimina las reglas de cobro y sus multiplicadores.</p>
+        </div>
+        <button class="btn btn-success" onclick="abrirModalRegla()">+ Agregar regla</button>
+      </div>
+
+      <div class="card">
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Tipo de día</th>
+                <th>Jornada</th>
+                <th>Multiplicador</th>
+                <th>Descripción / Horario</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tablaCobro"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANE: Configuraciones regionales -->
+    <div class="config-pane" id="paneRegiones">
+      <div class="pane-header">
+        <div>
+          <h2>🌍 Configuraciones regionales</h2>
+          <p>Administra los países y zonas horarias disponibles en el sistema.</p>
+        </div>
+        <button class="btn btn-success" onclick="abrirModalRegion()">+ Agregar región</button>
+      </div>
+
+      <div class="card">
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Zona horaria (IANA)</th>
+                <th>Descripción</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tablaRegiones"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANE: Gestión de datos -->
+    <div class="config-pane" id="paneDatos">
+      <div class="pane-header">
+        <div>
+          <h2>💾 Gestión de datos</h2>
+          <p>Exporta, importa o restablece la configuración del sistema.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:0.92rem;font-weight:700;color:#1a237e;margin-bottom:14px">Exportar / Importar</h3>
+        <p style="font-size:0.83rem;color:#546e7a;margin-bottom:14px">
+          Los cambios se guardan automáticamente en el navegador (localStorage).
+          Use estas opciones para respaldar o migrar la configuración entre equipos.
+        </p>
+        <div class="data-actions">
+          <button class="btn btn-primary" onclick="exportarJSON()">⬇️ Exportar JSON</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('importInput').click()">⬆️ Importar JSON</button>
+          <input type="file" id="importInput" accept=".json" style="display:none" onchange="importarJSON(event)">
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:0.92rem;font-weight:700;color:#c62828;margin-bottom:14px">Zona de peligro</h3>
+        <p style="font-size:0.83rem;color:#546e7a;margin-bottom:14px">
+          Esta acción eliminará todas las reglas y regiones personalizadas y restaurará los valores originales del sistema.
+        </p>
+        <button class="btn btn-danger" onclick="resetearDatos()">🔄 Restablecer valores por defecto</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+
+<!-- ═══════════════ MODAL: REGLA DE COBRO ═══════════════ -->
+<div class="modal-overlay" id="ruleModal">
+  <div class="modal">
+    <h3 id="ruleModalTitle">Nueva regla de cobro</h3>
+    <input type="hidden" id="ruleId">
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Tipo de día</label>
+        <select id="ruleTipoDia">
+          <option value="Regular">Regular</option>
+          <option value="Extraordinario">Extraordinario</option>
+          <option value="Feriado">Feriado</option>
+          <option value="OnCall">OnCall</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Multiplicador</label>
+        <input type="number" id="ruleMultiplicador" min="0.1" step="0.1" value="1.0">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Jornada</label>
+      <select id="ruleJornada">
+        <option value="Diurna/Ordinaria">Diurna/Ordinaria</option>
+        <option value="Nocturna/Extraordinaria">Nocturna/Extraordinaria</option>
+        <option value="Diurna/Ordinaria y Nocturna/Extraordinaria">Diurna/Ordinaria y Nocturna/Extraordinaria</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Descripción / Horario</label>
+      <input type="text" id="ruleDescripcion" placeholder="Ej: Lunes a Viernes de 06:01 a 21:59">
+    </div>
+
+    <div class="form-group">
+      <label>Días que aplica</label>
+      <div class="dias-grid">
+        <label class="dia-check"><input type="checkbox" name="ruleDias" value="Lunes"> Lunes</label>
+        <label class="dia-check"><input type="checkbox" name="ruleDias" value="Martes"> Martes</label>
+        <label class="dia-check"><input type="checkbox" name="ruleDias" value="Miércoles"> Miérc.</label>
+        <label class="dia-check"><input type="checkbox" name="ruleDias" value="Jueves"> Jueves</label>
+        <label class="dia-check"><input type="checkbox" name="ruleDias" value="Viernes"> Viernes</label>
+        <label class="dia-check"><input type="checkbox" name="ruleDias" value="Sábado"> Sábado</label>
+        <label class="dia-check"><input type="checkbox" name="ruleDias" value="Domingo"> Domingo</label>
+        <label class="dia-check"><input type="checkbox" name="ruleDias" value="Feriado"> Feriado</label>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Hora inicio</label>
+        <input type="time" id="ruleHoraInicio">
+      </div>
+      <div class="form-group">
+        <label>Hora fin</label>
+        <input type="time" id="ruleHoraFin">
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeRuleModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarRegla()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ MODAL: REGIÓN ═══════════════ -->
+<div class="modal-overlay" id="regionModal">
+  <div class="modal">
+    <h3 id="regionModalTitle">Nueva región</h3>
+    <input type="hidden" id="regionId">
+
+    <div class="form-group">
+      <label>Nombre para mostrar</label>
+      <input type="text" id="regionNombre" placeholder="Ej: Colombia">
+    </div>
+
+    <div class="form-group">
+      <label>Zona horaria (formato IANA)</label>
+      <input type="text" id="regionTimezone" placeholder="Ej: America/Bogota" list="tzList">
+      <datalist id="tzList">
+        <option value="America/Costa_Rica">
+        <option value="America/Bogota">
+        <option value="America/New_York">
+        <option value="America/Chicago">
+        <option value="America/Denver">
+        <option value="America/Los_Angeles">
+        <option value="America/Mexico_City">
+        <option value="America/Lima">
+        <option value="America/Santiago">
+        <option value="America/Argentina/Buenos_Aires">
+        <option value="America/Sao_Paulo">
+        <option value="America/Caracas">
+        <option value="America/Guayaquil">
+        <option value="America/Managua">
+        <option value="America/Guatemala">
+        <option value="America/Panama">
+        <option value="Europe/Madrid">
+        <option value="Europe/Berlin">
+        <option value="Europe/London">
+        <option value="Europe/Paris">
+        <option value="Europe/Rome">
+        <option value="Europe/Lisbon">
+        <option value="Asia/Tokyo">
+        <option value="Asia/Shanghai">
+        <option value="Asia/Kolkata">
+        <option value="Asia/Dubai">
+        <option value="Asia/Singapore">
+        <option value="Australia/Sydney">
+        <option value="Pacific/Auckland">
+        <option value="Africa/Lagos">
+        <option value="Africa/Nairobi">
+      </datalist>
+      <small style="font-size:0.73rem;color:#90a4ae;margin-top:3px">
+        Formato IANA: America/Costa_Rica, Europe/Berlin, Asia/Tokyo, etc.
+      </small>
+    </div>
+
+    <div class="form-group">
+      <label>Descripción (país / UTC offset)</label>
+      <input type="text" id="regionPais" placeholder="Ej: Colombia (UTC-5)">
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeRegionModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarRegion()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ SCRIPT ═══════════════ -->
+<script>
+// ──────────────────────────────────────────
+// DATOS POR DEFECTO
+// ──────────────────────────────────────────
+const DEFAULT_DATA = {
+  reglas: [
+    { id:"reg_diurna",   tipoDia:"Regular",        jornada:"Diurna/Ordinaria",                          multiplicador:1.0, descripcion:"Lunes a Viernes de 06:01 a 21:59",           dias:["Lunes","Martes","Miércoles","Jueves","Viernes"], horaInicio:"06:01", horaFin:"21:59" },
+    { id:"reg_nocturna", tipoDia:"Regular",        jornada:"Nocturna/Extraordinaria",                   multiplicador:1.5, descripcion:"Lunes a Viernes de 22:00 a 06:00",           dias:["Lunes","Martes","Miércoles","Jueves","Viernes"], horaInicio:"22:00", horaFin:"06:00" },
+    { id:"ext_diurna",   tipoDia:"Extraordinario", jornada:"Diurna/Ordinaria",                          multiplicador:1.5, descripcion:"Sábado y Domingo de 07:01 a 21:59",          dias:["Sábado","Domingo"],                             horaInicio:"07:01", horaFin:"21:59" },
+    { id:"ext_nocturna", tipoDia:"Extraordinario", jornada:"Nocturna/Extraordinaria",                   multiplicador:2.0, descripcion:"Sáb 22:00→Dom 07:00 y Dom 22:00→Lun 07:00", dias:["Sábado","Domingo","Lunes"],                     horaInicio:"22:00", horaFin:"07:00" },
+    { id:"fer_diurna",   tipoDia:"Feriado",        jornada:"Diurna/Ordinaria",                          multiplicador:2.0, descripcion:"Feriado de 06:01 a 21:59",                   dias:["Feriado"],                                      horaInicio:"06:01", horaFin:"21:59" },
+    { id:"fer_nocturna", tipoDia:"Feriado",        jornada:"Nocturna/Extraordinaria",                   multiplicador:2.0, descripcion:"Feriado de 22:00 a 06:00",                   dias:["Feriado"],                                      horaInicio:"22:00", horaFin:"06:00" },
+    { id:"oncall",       tipoDia:"OnCall",         jornada:"Diurna/Ordinaria y Nocturna/Extraordinaria",multiplicador:0.2, descripcion:"Solo disponibilidad sin realizar actividad",  dias:["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo","Feriado"], horaInicio:"00:00", horaFin:"23:59" }
+  ],
+  regiones: [
+    { id:"cr", nombre:"Costa Rica", timezone:"America/Costa_Rica", pais:"Costa Rica (UTC-6)" },
+    { id:"de", nombre:"Alemania",   timezone:"Europe/Berlin",       pais:"Alemania (UTC+1/+2)" }
+  ]
+};
+
+// ──────────────────────────────────────────
+// PERSISTENCIA
+// ──────────────────────────────────────────
+function cargarDatos() {
+  try {
+    const s = localStorage.getItem('calcCobro_v2');
+    return s ? JSON.parse(s) : JSON.parse(JSON.stringify(DEFAULT_DATA));
+  } catch { return JSON.parse(JSON.stringify(DEFAULT_DATA)); }
+}
+function guardarDatos() {
+  localStorage.setItem('calcCobro_v2', JSON.stringify(appData));
+}
+
+let appData = cargarDatos();
+
+// ──────────────────────────────────────────
+// NAVEGACIÓN ENTRE PANES
+// ──────────────────────────────────────────
+function switchPane(pane) {
+  ['cobro','regiones','datos'].forEach(p => {
+    document.getElementById('nav'   + p.charAt(0).toUpperCase() + p.slice(1))?.classList.toggle('active', p === pane);
+    document.getElementById('pane'  + p.charAt(0).toUpperCase() + p.slice(1))?.classList.toggle('active', p === pane);
+  });
+}
+
+// ──────────────────────────────────────────
+// RENDER TABLA DE COBRO
+// ──────────────────────────────────────────
+function renderTablaCobro() {
+  const tbody = document.getElementById('tablaCobro');
+  tbody.innerHTML = '';
+
+  if (!appData.reglas.length) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📭</div><p>No hay reglas de cobro configuradas.</p></div></td></tr>`;
+    document.getElementById('countCobro').textContent = '0';
+    return;
+  }
+
+  appData.reglas.forEach(r => {
+    const tr = document.createElement('tr');
+    const tagCls = { Regular:'tag-regular', Extraordinario:'tag-extraordinario', Feriado:'tag-feriado', OnCall:'tag-oncall' }[r.tipoDia] || 'tag-regular';
+    let multCls = 'mult-x1';
+    if (r.multiplicador >= 2.0)      multCls = 'mult-x2';
+    else if (r.multiplicador >= 1.5) multCls = 'mult-x15';
+    else if (r.multiplicador < 1)    multCls = 'mult-x02';
+
+    tr.innerHTML = `
+      <td><span class="tag ${tagCls}">${r.tipoDia}</span></td>
+      <td style="color:#455a64">${r.jornada}</td>
+      <td><span class="mult-badge ${multCls}">${r.multiplicador}x</span></td>
+      <td style="color:#607d8b;font-size:0.8rem">${r.descripcion}</td>
+      <td>
+        <div style="display:flex;gap:5px">
+          <button class="btn btn-warning btn-xs" onclick="abrirModalRegla('${r.id}')">✏️ Editar</button>
+          <button class="btn btn-danger  btn-xs" onclick="eliminarRegla('${r.id}')">🗑️ Eliminar</button>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('countCobro').textContent = appData.reglas.length;
+}
+
+// ──────────────────────────────────────────
+// RENDER TABLA REGIONES
+// ──────────────────────────────────────────
+function renderTablaRegiones() {
+  const tbody = document.getElementById('tablaRegiones');
+  tbody.innerHTML = '';
+
+  if (!appData.regiones.length) {
+    tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">🗺️</div><p>No hay regiones configuradas.</p></div></td></tr>`;
+    document.getElementById('countRegiones').textContent = '0';
+    return;
+  }
+
+  appData.regiones.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${r.nombre}</strong></td>
+      <td style="color:#546e7a;font-family:monospace;font-size:0.82rem">${r.timezone}</td>
+      <td style="color:#607d8b;font-size:0.82rem">${r.pais}</td>
+      <td>
+        <div style="display:flex;gap:5px">
+          <button class="btn btn-warning btn-xs" onclick="abrirModalRegion('${r.id}')">✏️ Editar</button>
+          <button class="btn btn-danger  btn-xs" onclick="eliminarRegion('${r.id}')">🗑️ Eliminar</button>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('countRegiones').textContent = appData.regiones.length;
+}
+
+// ──────────────────────────────────────────
+// MODAL: REGLA
+// ──────────────────────────────────────────
+function abrirModalRegla(id = null) {
+  document.getElementById('ruleId').value = id || '';
+  document.querySelectorAll('[name="ruleDias"]').forEach(cb => cb.checked = false);
+
+  if (id) {
+    const r = appData.reglas.find(x => x.id === id);
+    document.getElementById('ruleModalTitle').textContent  = 'Editar regla de cobro';
+    document.getElementById('ruleTipoDia').value           = r.tipoDia;
+    document.getElementById('ruleJornada').value           = r.jornada;
+    document.getElementById('ruleMultiplicador').value     = r.multiplicador;
+    document.getElementById('ruleDescripcion').value       = r.descripcion;
+    document.getElementById('ruleHoraInicio').value        = r.horaInicio;
+    document.getElementById('ruleHoraFin').value           = r.horaFin;
+    (r.dias || []).forEach(d => {
+      const cb = document.querySelector(`[name="ruleDias"][value="${d}"]`);
+      if (cb) cb.checked = true;
+    });
+  } else {
+    document.getElementById('ruleModalTitle').textContent  = 'Nueva regla de cobro';
+    document.getElementById('ruleTipoDia').value           = 'Regular';
+    document.getElementById('ruleJornada').value           = 'Diurna/Ordinaria';
+    document.getElementById('ruleMultiplicador').value     = '1.0';
+    document.getElementById('ruleDescripcion').value       = '';
+    document.getElementById('ruleHoraInicio').value        = '';
+    document.getElementById('ruleHoraFin').value           = '';
+  }
+  document.getElementById('ruleModal').classList.add('open');
+}
+
+function closeRuleModal() {
+  document.getElementById('ruleModal').classList.remove('open');
+}
+
+function guardarRegla() {
+  const id            = document.getElementById('ruleId').value;
+  const tipoDia       = document.getElementById('ruleTipoDia').value;
+  const jornada       = document.getElementById('ruleJornada').value;
+  const multiplicador = parseFloat(document.getElementById('ruleMultiplicador').value);
+  const descripcion   = document.getElementById('ruleDescripcion').value.trim();
+  const horaInicio    = document.getElementById('ruleHoraInicio').value;
+  const horaFin       = document.getElementById('ruleHoraFin').value;
+  const dias          = [...document.querySelectorAll('[name="ruleDias"]:checked')].map(cb => cb.value);
+
+  if (!tipoDia || isNaN(multiplicador) || !descripcion) {
+    alert('Tipo de día, multiplicador y descripción son obligatorios.');
+    return;
+  }
+
+  if (id) {
+    Object.assign(appData.reglas.find(x => x.id === id), { tipoDia, jornada, multiplicador, descripcion, horaInicio, horaFin, dias });
+  } else {
+    appData.reglas.push({ id: 'rule_' + Date.now(), tipoDia, jornada, multiplicador, descripcion, horaInicio, horaFin, dias });
+  }
+
+  guardarDatos();
+  renderTablaCobro();
+  closeRuleModal();
+}
+
+function eliminarRegla(id) {
+  if (!confirm('¿Eliminar esta regla de cobro?')) return;
+  appData.reglas = appData.reglas.filter(r => r.id !== id);
+  guardarDatos();
+  renderTablaCobro();
+}
+
+// ──────────────────────────────────────────
+// MODAL: REGIÓN
+// ──────────────────────────────────────────
+function abrirModalRegion(id = null) {
+  document.getElementById('regionId').value = id || '';
+
+  if (id) {
+    const r = appData.regiones.find(x => x.id === id);
+    document.getElementById('regionModalTitle').textContent = 'Editar región';
+    document.getElementById('regionNombre').value           = r.nombre;
+    document.getElementById('regionTimezone').value         = r.timezone;
+    document.getElementById('regionPais').value             = r.pais;
+  } else {
+    document.getElementById('regionModalTitle').textContent = 'Nueva región';
+    document.getElementById('regionNombre').value           = '';
+    document.getElementById('regionTimezone').value         = '';
+    document.getElementById('regionPais').value             = '';
+  }
+  document.getElementById('regionModal').classList.add('open');
+}
+
+function closeRegionModal() {
+  document.getElementById('regionModal').classList.remove('open');
+}
+
+function guardarRegion() {
+  const id       = document.getElementById('regionId').value;
+  const nombre   = document.getElementById('regionNombre').value.trim();
+  const timezone = document.getElementById('regionTimezone').value.trim();
+  const pais     = document.getElementById('regionPais').value.trim();
+
+  if (!nombre || !timezone) {
+    alert('Nombre y zona horaria son obligatorios.');
+    return;
+  }
+
+  if (id) {
+    Object.assign(appData.regiones.find(x => x.id === id), { nombre, timezone, pais });
+  } else {
+    appData.regiones.push({ id: 'reg_' + Date.now(), nombre, timezone, pais });
+  }
+
+  guardarDatos();
+  renderTablaRegiones();
+  closeRegionModal();
+}
+
+function eliminarRegion(id) {
+  if (appData.regiones.length <= 1) {
+    alert('Debe haber al menos una región configurada.');
+    return;
+  }
+  if (!confirm('¿Eliminar esta región?')) return;
+  appData.regiones = appData.regiones.filter(r => r.id !== id);
+  guardarDatos();
+  renderTablaRegiones();
+}
+
+// ──────────────────────────────────────────
+// EXPORT / IMPORT / RESET
+// ──────────────────────────────────────────
+function exportarJSON() {
+  const blob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'calculo-cobro-data.json';
+  a.click();
+}
+
+function importarJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.reglas || !data.regiones) {
+        alert('El archivo JSON no tiene el formato correcto.');
+        return;
+      }
+      appData = data;
+      guardarDatos();
+      renderTablaCobro();
+      renderTablaRegiones();
+      alert('Datos importados correctamente.');
+    } catch { alert('Error al leer el archivo JSON.'); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function resetearDatos() {
+  if (!confirm('¿Restablecer todos los datos por defecto? Se perderán todos los cambios.')) return;
+  localStorage.removeItem('calcCobro_v2');
+  appData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+  guardarDatos();
+  renderTablaCobro();
+  renderTablaRegiones();
+  alert('Datos restablecidos correctamente.');
+}
+
+// ──────────────────────────────────────────
+// CERRAR MODALES AL CLICK FUERA
+// ──────────────────────────────────────────
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.remove('open');
+  });
+});
+
+// ──────────────────────────────────────────
+// INICIO
+// ──────────────────────────────────────────
+renderTablaCobro();
+renderTablaRegiones();
+</script>
+</body>
+</html>

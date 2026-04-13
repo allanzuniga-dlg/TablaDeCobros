@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cálculo de cobro</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #eef0f5;
+      color: #2d3748;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+      color: #fff;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-left h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.3px; }
+    .header-left .live-clock { font-size: 0.75rem; color: rgba(255,255,255,0.65); margin-top: 2px; }
+
+    .header-right { display: flex; align-items: center; gap: 14px; }
+    .header-right label { font-size: 0.8rem; color: rgba(255,255,255,0.75); }
+    #regionSelector {
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+      font-size: 0.88rem;
+      cursor: pointer;
+    }
+    #regionSelector option { color: #333; background: #fff; }
+    .header-region-time { font-size: 0.8rem; color: #90caf9; min-width: 80px; }
+
+    /* ── LAYOUT ── */
+    .main-container {
+      display: grid;
+      grid-template-columns: 1fr 440px;
+      gap: 18px;
+      padding: 18px 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    @media (max-width: 960px) { .main-container { grid-template-columns: 1fr; } }
+
+    /* ── CARD ── */
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+      margin-bottom: 16px;
+    }
+    .card:last-child { margin-bottom: 0; }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+      border-bottom: 2px solid #e8eaf6;
+    }
+    .card-header h2 { font-size: 0.97rem; font-weight: 700; color: #1a237e; }
+
+    /* ── FORM ── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group label { font-size: 0.8rem; font-weight: 600; color: #546e7a; }
+    .form-group select,
+    .form-group input[type="time"],
+    .form-group input[type="text"],
+    .form-group input[type="number"] {
+      padding: 9px 12px;
+      border: 1.5px solid #cfd8dc;
+      border-radius: 9px;
+      font-size: 0.88rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      background: #fafafa;
+      color: #2d3748;
+      width: 100%;
+    }
+    .form-group select:focus,
+    .form-group input:focus {
+      outline: none;
+      border-color: #3949ab;
+      box-shadow: 0 0 0 3px rgba(57,73,171,0.12);
+      background: #fff;
+    }
+    .oncall-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      background: #f1f8e9;
+      border: 1.5px solid #aed581;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .oncall-row:hover { background: #e6f4d7; }
+    .oncall-row input { width: 16px; height: 16px; cursor: pointer; accent-color: #558b2f; }
+    .oncall-row label { font-size: 0.88rem; font-weight: 600; color: #33691e; cursor: pointer; }
+
+    /* ── BUTTONS ── */
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+      transition: all 0.18s;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-primary { background: #3949ab; color: #fff; }
+    .btn-primary:hover { background: #283593; transform: translateY(-1px); }
+    .btn-success { background: #2e7d32; color: #fff; }
+    .btn-success:hover { background: #1b5e20; transform: translateY(-1px); }
+    .btn-warning { background: #f57c00; color: #fff; }
+    .btn-warning:hover { background: #e65100; }
+    .btn-danger { background: #c62828; color: #fff; }
+    .btn-danger:hover { background: #b71c1c; }
+    .btn-ghost { background: transparent; color: #546e7a; border: 1.5px solid #cfd8dc; }
+    .btn-ghost:hover { background: #f5f5f5; }
+    .btn-sm { padding: 5px 11px; font-size: 0.77rem; }
+    .btn-xs { padding: 3px 8px; font-size: 0.72rem; border-radius: 6px; }
+
+    /* ── RESULT BOX ── */
+    .result-empty {
+      text-align: center;
+      padding: 28px 0;
+      color: #90a4ae;
+      font-size: 0.85rem;
+    }
+    .result-empty span { font-size: 2rem; display: block; margin-bottom: 8px; }
+
+    .segments-breakdown {
+      background: #f8f9ff;
+      border: 1px solid #e8eaf6;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+    .segments-breakdown table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .segments-breakdown thead tr { background: #3949ab; color: #fff; }
+    .segments-breakdown th, .segments-breakdown td { padding: 7px 10px; text-align: left; }
+    .segments-breakdown tbody tr:nth-child(even) { background: #eef0fb; }
+    .segments-breakdown tfoot tr { background: #1a237e; color: #fff; font-weight: 700; }
+
+    .result-summary {
+      background: linear-gradient(135deg, #e8eaf6, #f5f5ff);
+      border-radius: 10px;
+      padding: 14px;
+      border: 1px solid #c5cae9;
+    }
+    .result-summary h3 { font-size: 0.82rem; color: #3949ab; font-weight: 700; margin-bottom: 10px; }
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid #c5cae9;
+      font-size: 0.83rem;
+    }
+    .result-row:last-child { border: none; margin-top: 4px; }
+    .result-row .label { color: #546e7a; }
+    .result-row .value { font-weight: 700; color: #1a237e; }
+    .result-total .value { font-size: 1.2rem; color: #0d47a1; }
+
+    /* ── TIMEZONE CARDS ── */
+    .tz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+    .tz-card {
+      background: #f5f7ff;
+      border: 1.5px solid #c5cae9;
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+    .tz-card.primary       { background: #e8f5e9; border-color: #a5d6a7; }
+    .tz-card.active-region { background: #e8eaf6; border-color: #3949ab; border-width: 2px; }
+    .tz-country { font-size: 0.72rem; color: #546e7a; font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .tz-time { font-size: 1.35rem; font-weight: 800; color: #1a237e; line-height: 1; }
+    .tz-date { font-size: 0.7rem; color: #78909c; margin-top: 3px; }
+    .tz-empty { text-align: center; color: #90a4ae; font-size: 0.83rem; padding: 12px 0; }
+    .tz-badge { font-size: 0.62rem; font-weight: 700; padding: 1px 7px; border-radius: 10px; margin-bottom: 5px; display: inline-block; }
+    .active-badge { background: #3949ab; color: #fff; }
+    .cr-badge     { background: #2e7d32; color: #fff; }
+
+    /* ── BILLING TABLE ── */
+    .billing-wrapper { overflow-x: auto; border-radius: 10px; border: 1px solid #e0e0e0; }
+    table.billing-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    table.billing-table thead tr { background: #1a237e; }
+    table.billing-table th {
+      color: #fff;
+      padding: 9px 8px;
+      text-align: left;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+    }
+    table.billing-table td { padding: 8px 8px; border-bottom: 1px solid #ececec; vertical-align: middle; }
+    table.billing-table tbody tr:hover { background: #f5f5f5; }
+    table.billing-table tbody tr.highlighted {
+      background: #fff8e1 !important;
+      border-left: 4px solid #ffc107;
+    }
+    table.billing-table tbody tr.highlighted td { font-weight: 600; }
+
+    /* ── MANAGE TABLE ── */
+    table.manage-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    table.manage-table th { background: #37474f; color: #fff; padding: 7px 8px; text-align: left; }
+    table.manage-table td { padding: 6px 8px; border-bottom: 1px solid #eee; }
+    table.manage-table tbody tr:hover { background: #fafafa; }
+
+    /* ── TAGS / BADGES ── */
+    .tag {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .tag-regular    { background: #e3f2fd; color: #1565c0; }
+    .tag-extraordinario { background: #fff3e0; color: #bf360c; }
+    .tag-feriado    { background: #fce4ec; color: #880e4f; }
+    .tag-oncall     { background: #e8f5e9; color: #1b5e20; }
+
+    .mult-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 800;
+    }
+    .mult-x02 { background: #f3e5f5; color: #6a1b9a; }
+    .mult-x1  { background: #e8f5e9; color: #2e7d32; }
+    .mult-x15 { background: #fff8e1; color: #e65100; }
+    .mult-x2  { background: #fce4ec; color: #c62828; }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 16px;
+      padding: 26px;
+      width: 520px;
+      max-width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .modal h3 { font-size: 1.05rem; color: #1a237e; margin-bottom: 18px; font-weight: 700; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 14px; border-top: 1px solid #e0e0e0; }
+
+    .dias-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      background: #f8f9fa;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1.5px solid #e0e0e0;
+    }
+    .dia-check { display: flex; align-items: center; gap: 5px; font-size: 0.8rem; cursor: pointer; }
+    .dia-check input { cursor: pointer; accent-color: #3949ab; }
+
+    /* ── DATA ACTIONS ── */
+    .data-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* ── NOTE ── */
+    .note { font-size: 0.73rem; color: #78909c; margin-top: 8px; font-style: italic; }
+
+    /* ── BOTÓN ENGRANAJE ── */
+    .btn-gear {
+      background: rgba(255,255,255,0.15);
+      border: 1.5px solid rgba(255,255,255,0.35);
+      color: #fff;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+      text-decoration: none;
+    }
+    .btn-gear:hover { background: rgba(255,255,255,0.28); transform: rotate(45deg); }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<header>
+  <div class="header-left">
+    <h1>💵 Cálculo de cobro</h1>
+    <div class="live-clock" id="liveClock"></div>
+  </div>
+  <div class="header-right">
+    <label for="regionSelector">Región activa:</label>
+    <select id="regionSelector" onchange="onRegionChange()"></select>
+    <div class="header-region-time" id="headerRegionTime"></div>
+    <a class="btn-gear" href="configuracion.html" title="Configuración">⚙️</a>
+  </div>
+</header>
+
+<!-- ═══════════════ MAIN ═══════════════ -->
+<div class="main-container">
+
+  <!-- ────── COLUMNA IZQUIERDA ────── -->
+  <div>
+
+    <!-- Información inicial -->
+    <div class="card">
+      <div class="card-header">
+        <h2>📋 Información inicial</h2>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Día de la semana</label>
+          <select id="diaSemana" onchange="calcular()">
+            <option value="">— Seleccione —</option>
+            <option value="Lunes">Lunes</option>
+            <option value="Martes">Martes</option>
+            <option value="Miércoles">Miércoles</option>
+            <option value="Jueves">Jueves</option>
+            <option value="Viernes">Viernes</option>
+            <option value="Sábado">Sábado</option>
+            <option value="Domingo">Domingo</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Feriado</label>
+          <div class="oncall-row" style="background:#fff3e0;border-color:#ffcc80" onclick="toggleFeriado()">
+            <input type="checkbox" id="isFeriado" onchange="calcular()" style="accent-color:#e65100">
+            <label for="isFeriado" style="color:#bf360c">🎉 Día feriado</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Hora de inicio</label>
+          <input type="time" id="horaInicio" value="08:00" onchange="calcular()">
+        </div>
+
+        <div class="form-group">
+          <label>Hora de fin</label>
+          <input type="time" id="horaFin" value="17:00" onchange="calcular()">
+        </div>
+
+        <div class="form-group" style="grid-column:1/-1">
+          <label>Modalidad</label>
+          <div class="oncall-row" onclick="toggleOnCall()">
+            <input type="checkbox" id="isOnCall" onchange="calcular()">
+            <label for="isOnCall">🔔 On Call (solo disponibilidad)</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resultado del cálculo -->
+    <div class="card">
+      <div class="card-header">
+        <h2>📊 Resultado del cálculo</h2>
+      </div>
+      <div id="resultadoContent">
+        <div class="result-empty">
+          <span>🧮</span>
+          Seleccione los datos en la sección anterior para ver el cálculo
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla de cobro (referencia) -->
+    <div class="card">
+      <div class="card-header">
+        <h2>📑 Tabla de cobro</h2>
+      </div>
+      <div class="billing-wrapper">
+        <table class="billing-table">
+          <thead>
+            <tr>
+              <th>Tipo día</th>
+              <th>Jornada</th>
+              <th>Mult.</th>
+              <th>Horario</th>
+            </tr>
+          </thead>
+          <tbody id="billingTableBody"></tbody>
+        </table>
+      </div>
+      <p class="note">★ La fila amarilla indica el/los rubro(s) aplicado(s) al cálculo actual</p>
+    </div>
+
+  </div><!-- /col izquierda -->
+
+  <!-- ────── COLUMNA DERECHA ────── -->
+  <div>
+
+    <!-- Zonas horarias -->
+    <div class="card">
+      <div class="card-header">
+        <h2>🌍 Zonas horarias</h2>
+      </div>
+      <div id="timezonesDisplay">
+        <div class="tz-empty">Complete la información inicial para ver las zonas horarias</div>
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- /main-container -->
+
+
+
+
+<!-- ═══════════════ SCRIPT ═══════════════ -->
+<script>
+// ──────────────────────────────────────────
+// DATOS POR DEFECTO (sincronizado con data.json)
+// ──────────────────────────────────────────
+const DEFAULT_DATA = {
+  reglas: [
+    {
+      id: "reg_diurna",
+      tipoDia: "Regular",
+      jornada: "Diurna/Ordinaria",
+      multiplicador: 1.0,
+      descripcion: "Lunes a Viernes de 06:01 a 21:59",
+      dias: ["Lunes","Martes","Miércoles","Jueves","Viernes"],
+      horaInicio: "06:01",
+      horaFin: "21:59"
+    },
+    {
+      id: "reg_nocturna",
+      tipoDia: "Regular",
+      jornada: "Nocturna/Extraordinaria",
+      multiplicador: 1.5,
+      descripcion: "Lunes a Viernes de 22:00 a 06:00",
+      dias: ["Lunes","Martes","Miércoles","Jueves","Viernes"],
+      horaInicio: "22:00",
+      horaFin: "06:00"
+    },
+    {
+      id: "ext_diurna",
+      tipoDia: "Extraordinario",
+      jornada: "Diurna/Ordinaria",
+      multiplicador: 1.5,
+      descripcion: "Sábado y Domingo de 07:01 a 21:59",
+      dias: ["Sábado","Domingo"],
+      horaInicio: "07:01",
+      horaFin: "21:59"
+    },
+    {
+      id: "ext_nocturna",
+      tipoDia: "Extraordinario",
+      jornada: "Nocturna/Extraordinaria",
+      multiplicador: 2.0,
+      descripcion: "Sáb 22:00→Dom 07:00 y Dom 22:00→Lun 07:00",
+      dias: ["Sábado","Domingo","Lunes"],
+      horaInicio: "22:00",
+      horaFin: "07:00"
+    },
+    {
+      id: "fer_diurna",
+      tipoDia: "Feriado",
+      jornada: "Diurna/Ordinaria",
+      multiplicador: 2.0,
+      descripcion: "Feriado de 06:01 a 21:59",
+      dias: ["Feriado"],
+      horaInicio: "06:01",
+      horaFin: "21:59"
+    },
+    {
+      id: "fer_nocturna",
+      tipoDia: "Feriado",
+      jornada: "Nocturna/Extraordinaria",
+      multiplicador: 2.0,
+      descripcion: "Feriado de 22:00 a 06:00",
+      dias: ["Feriado"],
+      horaInicio: "22:00",
+      horaFin: "06:00"
+    },
+    {
+      id: "oncall",
+      tipoDia: "OnCall",
+      jornada: "Diurna/Ordinaria y Nocturna/Extraordinaria",
+      multiplicador: 0.2,
+      descripcion: "Solo disponibilidad sin realizar ninguna actividad",
+      dias: ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo","Feriado"],
+      horaInicio: "00:00",
+      horaFin: "23:59"
+    }
+  ],
+  regiones: [
+    { id: "cr", nombre: "Costa Rica", timezone: "America/Costa_Rica", pais: "Costa Rica (UTC-6)" },
+    { id: "de", nombre: "Alemania",   timezone: "Europe/Berlin",       pais: "Alemania (UTC+1/+2)" }
+  ]
+};
+
+// ──────────────────────────────────────────
+// PERSISTENCIA
+// ──────────────────────────────────────────
+function cargarDatos() {
+  try {
+    const s = localStorage.getItem('calcCobro_v2');
+    return s ? JSON.parse(s) : JSON.parse(JSON.stringify(DEFAULT_DATA));
+  } catch { return JSON.parse(JSON.stringify(DEFAULT_DATA)); }
+}
+function guardarDatos() {
+  localStorage.setItem('calcCobro_v2', JSON.stringify(appData));
+}
+
+let appData = cargarDatos();
+
+// ──────────────────────────────────────────
+// LÓGICA DE CÁLCULO
+// ──────────────────────────────────────────
+
+/** Convierte "HH:MM" → minutos desde medianoche */
+function toMin(t) {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+
+/** Devuelve multiplicador de una regla por su id */
+function getMult(id) {
+  return appData.reglas.find(r => r.id === id)?.multiplicador ?? 1;
+}
+
+/**
+ * Segmentos de tiempo para cada día (no solapados, cubren 0-1440 min).
+ * Cada segmento: { start, end, ruleId }
+ */
+function segmentosDia(dia) {
+  switch (dia) {
+    case 'Lunes':
+      // 00:00-07:00 → ext_nocturna (continuación Dom→Lun)
+      // 07:00-22:00 → reg_diurna
+      // 22:00-24:00 → reg_nocturna
+      return [
+        { start:    0, end:  420, ruleId: 'ext_nocturna' },
+        { start:  420, end: 1320, ruleId: 'reg_diurna'   },
+        { start: 1320, end: 1440, ruleId: 'reg_nocturna' }
+      ];
+    case 'Martes':
+    case 'Miércoles':
+    case 'Jueves':
+    case 'Viernes':
+      // 00:00-06:01 → reg_nocturna (continuación noche anterior)
+      // 06:01-22:00 → reg_diurna
+      // 22:00-24:00 → reg_nocturna
+      return [
+        { start:    0, end:  361, ruleId: 'reg_nocturna' },
+        { start:  361, end: 1320, ruleId: 'reg_diurna'   },
+        { start: 1320, end: 1440, ruleId: 'reg_nocturna' }
+      ];
+    case 'Sábado':
+      // 00:00-06:01 → reg_nocturna (Vie→Sáb)
+      // 06:01-22:00 → ext_diurna
+      // 22:00-24:00 → ext_nocturna (Sáb→Dom)
+      return [
+        { start:    0, end:  361, ruleId: 'reg_nocturna' },
+        { start:  361, end: 1320, ruleId: 'ext_diurna'   },
+        { start: 1320, end: 1440, ruleId: 'ext_nocturna' }
+      ];
+    case 'Domingo':
+      // 00:00-07:01 → ext_nocturna (Sáb→Dom)
+      // 07:01-22:00 → ext_diurna
+      // 22:00-24:00 → ext_nocturna (Dom→Lun)
+      return [
+        { start:    0, end:  421, ruleId: 'ext_nocturna' },
+        { start:  421, end: 1320, ruleId: 'ext_diurna'   },
+        { start: 1320, end: 1440, ruleId: 'ext_nocturna' }
+      ];
+    case 'Feriado':
+      return [
+        { start:    0, end:  361, ruleId: 'fer_nocturna' },
+        { start:  361, end: 1320, ruleId: 'fer_diurna'   },
+        { start: 1320, end: 1440, ruleId: 'fer_nocturna' }
+      ];
+    default:
+      return [];
+  }
+}
+
+/** Siguiente día de la semana */
+function diaSiguiente(dia) {
+  const cycle = {
+    'Lunes':'Martes','Martes':'Miércoles','Miércoles':'Jueves',
+    'Jueves':'Viernes','Viernes':'Sábado','Sábado':'Domingo',
+    'Domingo':'Lunes','Feriado':'Lunes'
+  };
+  return cycle[dia] || dia;
+}
+
+/** Intersección entre [ws, we) y lista de segmentos del día */
+function intersectar(segmentos, ws, we) {
+  const result = [];
+  for (const s of segmentos) {
+    const a = Math.max(ws, s.start);
+    const b = Math.min(we, s.end);
+    if (b > a) result.push({ ruleId: s.ruleId, minutos: b - a });
+  }
+  return result;
+}
+
+/**
+ * Calcula los segmentos de horas para un rango de tiempo dado.
+ * Maneja cruce de medianoche automáticamente.
+ */
+function calcularSegmentos(dia, startStr, endStr, isOnCall) {
+  if (isOnCall) {
+    let mins = toMin(endStr) - toMin(startStr);
+    if (mins <= 0) mins += 1440;
+    return [{ ruleId: 'oncall', minutos: mins }];
+  }
+
+  const ws = toMin(startStr);
+  const we = toMin(endStr);
+
+  if (we > ws) {
+    // Mismo día
+    return intersectar(segmentosDia(dia), ws, we);
+  } else if (we < ws) {
+    // Cruza medianoche
+    const parte1 = intersectar(segmentosDia(dia), ws, 1440);
+    const parte2 = intersectar(segmentosDia(diaSiguiente(dia)), 0, we);
+    return fusionar([...parte1, ...parte2]);
+  } else {
+    // Start == End → 24 horas completas
+    return intersectar(segmentosDia(dia), 0, 1440);
+  }
+}
+
+/** Fusiona segmentos consecutivos con la misma regla */
+function fusionar(segs) {
+  if (!segs.length) return [];
+  const merged = [{ ...segs[0] }];
+  for (let i = 1; i < segs.length; i++) {
+    if (segs[i].ruleId === merged[merged.length - 1].ruleId) {
+      merged[merged.length - 1].minutos += segs[i].minutos;
+    } else {
+      merged.push({ ...segs[i] });
+    }
+  }
+  return merged;
+}
+
+// ──────────────────────────────────────────
+// CALCULAR Y RENDERIZAR
+// ──────────────────────────────────────────
+function calcular() {
+  const diaBase   = document.getElementById('diaSemana').value;
+  const isFeriado = document.getElementById('isFeriado').checked;
+  const dia       = isFeriado ? 'Feriado' : diaBase;
+  const hInicio   = document.getElementById('horaInicio').value;
+  const hFin      = document.getElementById('horaFin').value;
+  const isOnCall  = document.getElementById('isOnCall').checked;
+
+  // Limpiar highlights
+  document.querySelectorAll('#billingTableBody tr').forEach(tr => tr.classList.remove('highlighted'));
+
+  if (!dia || !hInicio || !hFin) {  // dia es 'Feriado' si checkbox activo, o el valor del select
+    document.getElementById('resultadoContent').innerHTML =
+      `<div class="result-empty"><span>🧮</span>Seleccione los datos en la sección anterior para ver el cálculo</div>`;
+    document.getElementById('timezonesDisplay').innerHTML =
+      `<div class="tz-empty">Complete la información inicial para ver las zonas horarias</div>`;
+    return;
+  }
+
+  const segs = calcularSegmentos(dia, hInicio, hFin, isOnCall);
+  if (!segs.length) {
+    document.getElementById('resultadoContent').innerHTML =
+      `<div class="result-empty"><span>⚠️</span>No se encontraron reglas para ese día/horario</div>`;
+    return;
+  }
+
+  // Agregar multiplicadores actuales a cada segmento
+  const segsConMult = segs.map(s => ({ ...s, mult: getMult(s.ruleId) }));
+
+  renderResultado(segsConMult, hInicio, hFin);
+  actualizarZonas(hInicio);
+
+  // Destacar filas correspondientes
+  const reglasUsadas = [...new Set(segsConMult.map(s => s.ruleId))];
+  reglasUsadas.forEach(id => {
+    const row = document.querySelector(`#billingTableBody tr[data-rule="${id}"]`);
+    if (row) row.classList.add('highlighted');
+  });
+}
+
+function renderResultado(segs, hInicio, hFin) {
+  const totalMin    = segs.reduce((s, x) => s + x.minutos, 0);
+  const totalHoras  = totalMin / 60;
+  const horasMultip = segs.reduce((s, x) => s + (x.minutos / 60) * x.mult, 0);
+
+  let html = '';
+
+  if (segs.length > 1) {
+    html += `<div class="segments-breakdown">
+      <table>
+        <thead><tr><th>Jornada aplicada</th><th>Horas</th><th>Mult.</th><th>Horas aplicadas</th></tr></thead>
+        <tbody>`;
+    segs.forEach(s => {
+      const regla   = appData.reglas.find(r => r.id === s.ruleId);
+      const label   = regla ? `${regla.tipoDia} – ${regla.jornada}` : s.ruleId;
+      const horas   = (s.minutos / 60).toFixed(2);
+      const hapl    = ((s.minutos / 60) * s.mult).toFixed(2);
+      html += `<tr><td>${label}</td><td>${horas}h</td><td>${s.mult}x</td><td>${hapl}h</td></tr>`;
+    });
+    html += `</tbody>
+        <tfoot><tr>
+          <td colspan="2">Total: ${totalHoras.toFixed(2)}h</td>
+          <td>—</td>
+          <td>${horasMultip.toFixed(2)}h</td>
+        </tr></tfoot>
+      </table></div>`;
+  }
+
+  const reglaUnica = segs.length === 1
+    ? appData.reglas.find(r => r.id === segs[0].ruleId) : null;
+
+  html += `<div class="result-summary">
+    <h3>Resumen del período ${hInicio} – ${hFin}</h3>`;
+
+  if (reglaUnica) {
+    html += `<div class="result-row">
+      <span class="label">Jornada aplicada</span>
+      <span class="value">${reglaUnica.tipoDia} – ${reglaUnica.jornada}</span>
+    </div>
+    <div class="result-row">
+      <span class="label">Multiplicador</span>
+      <span class="value">${segs[0].mult}x</span>
+    </div>`;
+  }
+
+  html += `<div class="result-row">
+    <span class="label">Cantidad de horas</span>
+    <span class="value">${totalHoras.toFixed(2)} h</span>
+  </div>
+  <div class="result-row result-total">
+    <span class="label">Horas con multiplicador aplicado</span>
+    <span class="value">${horasMultip.toFixed(2)} h</span>
+  </div>
+  </div>`;
+
+  document.getElementById('resultadoContent').innerHTML = html;
+}
+
+/**
+ * Convierte "HH:MM" interpretado en la zona horaria indicada a un objeto Date (UTC).
+ * Usa el iterativo de 3 pasos para compensar el offset del timezone correctamente.
+ */
+function horaEnZonaAUTC(horaStr, timezone) {
+  const now = new Date();
+  // Fecha de hoy en la zona horaria objetivo (formato YYYY-MM-DD via locale sv)
+  const fechaHoy = new Intl.DateTimeFormat('sv', {
+    timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(now); // "YYYY-MM-DD"
+
+  // Punto de partida: tratar como UTC puro
+  let ref = new Date(`${fechaHoy}T${horaStr}:00Z`);
+
+  // 3 iteraciones son suficientes para converger en cualquier offset
+  for (let i = 0; i < 3; i++) {
+    const localStr = new Intl.DateTimeFormat('sv', {
+      timeZone: timezone,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit'
+    }).format(ref); // "YYYY-MM-DD HH:MM"
+    const wantedMs = new Date(`${fechaHoy}T${horaStr}:00Z`).getTime();
+    const gotMs    = new Date(localStr.replace(' ', 'T') + ':00Z').getTime();
+    ref = new Date(ref.getTime() + (wantedMs - gotMs));
+  }
+  return ref;
+}
+
+function actualizarZonas(horaInicio) {
+  const selId         = document.getElementById('regionSelector').value;
+  const regionActiva  = appData.regiones.find(r => r.id === selId) || appData.regiones[0];
+  const crRegion      = appData.regiones.find(r => r.timezone === 'America/Costa_Rica');
+
+  // La hora ingresada está en la zona horaria de la región activa → convertir a UTC
+  const ref = horaEnZonaAUTC(horaInicio, regionActiva.timezone);
+
+  // Orden de tarjetas: región activa primero, Costa Rica segunda (si es diferente), resto
+  const orden = [regionActiva];
+  if (crRegion && crRegion.id !== regionActiva.id) orden.push(crRegion);
+  appData.regiones.forEach(r => {
+    if (r.id !== regionActiva.id && r.id !== crRegion?.id) orden.push(r);
+  });
+
+  let html = `<div class="tz-grid">`;
+  orden.forEach((r, i) => {
+    const esActiva = r.id === regionActiva.id;
+    const esCR     = r.id === crRegion?.id;
+    html += renderTzCard(r, ref, esActiva, esCR && !esActiva);
+  });
+  html += `</div>`;
+  document.getElementById('timezonesDisplay').innerHTML = html;
+}
+
+function renderTzCard(region, refDate, esActiva, esCR) {
+  if (!region) return '';
+  try {
+    const timeFmt = new Intl.DateTimeFormat('es-CR', {
+      timeZone: region.timezone, hour: '2-digit', minute: '2-digit', hour12: false
+    });
+    const dateFmt = new Intl.DateTimeFormat('es-CR', {
+      timeZone: region.timezone, weekday: 'long', year: 'numeric', month: 'short', day: 'numeric'
+    });
+
+    let cls = 'tz-card';
+    if (esActiva) cls += ' active-region';
+    else if (esCR) cls += ' primary';
+
+    const badge = esActiva
+      ? `<div class="tz-badge active-badge">Región activa</div>`
+      : esCR ? `<div class="tz-badge cr-badge">Costa Rica</div>` : '';
+
+    return `<div class="${cls}">
+      ${badge}
+      <div class="tz-country">🌍 ${region.nombre}</div>
+      <div class="tz-time">${timeFmt.format(refDate)}</div>
+      <div class="tz-date">${dateFmt.format(refDate)}</div>
+    </div>`;
+  } catch {
+    return `<div class="tz-card"><div class="tz-country">${region.nombre}</div>
+      <div style="font-size:0.75rem;color:#e53935">Zona horaria inválida</div></div>`;
+  }
+}
+
+// ──────────────────────────────────────────
+// RENDER TABLAS
+// ──────────────────────────────────────────
+
+/** Tabla de cobro de referencia (izquierda) — solo display, sin acciones */
+function renderTablaCobroTLA() {
+  const tbody = document.getElementById('billingTableBody');
+  tbody.innerHTML = '';
+  appData.reglas.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.setAttribute('data-rule', r.id);
+
+    const tagCls = { Regular:'tag-regular', Extraordinario:'tag-extraordinario', Feriado:'tag-feriado', OnCall:'tag-oncall' }[r.tipoDia] || 'tag-regular';
+    let multCls = 'mult-x1';
+    if (r.multiplicador >= 2.0)      multCls = 'mult-x2';
+    else if (r.multiplicador >= 1.5) multCls = 'mult-x15';
+    else if (r.multiplicador < 1)    multCls = 'mult-x02';
+
+    tr.innerHTML = `
+      <td><span class="tag ${tagCls}">${r.tipoDia}</span></td>
+      <td style="font-size:0.77rem;color:#455a64">${r.jornada}</td>
+      <td><span class="mult-badge ${multCls}">${r.multiplicador}x</span></td>
+      <td style="font-size:0.75rem;color:#607d8b">${r.descripcion}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderSelectorRegiones() {
+  const sel = document.getElementById('regionSelector');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  appData.regiones.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.id;
+    opt.textContent = r.nombre;
+    if (r.id === prev) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+// ──────────────────────────────────────────
+// CAMBIO DE REGIÓN
+// ──────────────────────────────────────────
+function onRegionChange() {
+  actualizarHeaderRegion();
+  calcular();
+}
+
+function actualizarHeaderRegion() {
+  const selId  = document.getElementById('regionSelector').value;
+  const region = appData.regiones.find(r => r.id === selId);
+  if (!region) return;
+  try {
+    const fmt = new Intl.DateTimeFormat('es-CR', {
+      timeZone: region.timezone, hour: '2-digit', minute: '2-digit', hour12: false
+    });
+    document.getElementById('headerRegionTime').textContent = fmt.format(new Date());
+  } catch { document.getElementById('headerRegionTime').textContent = ''; }
+}
+
+// ──────────────────────────────────────────
+// RELOJ EN VIVO
+// ──────────────────────────────────────────
+function iniciarReloj() {
+  function tick() {
+    try {
+      const fmt = new Intl.DateTimeFormat('es-CR', {
+        timeZone: 'America/Costa_Rica',
+        weekday: 'short', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+      });
+      document.getElementById('liveClock').textContent = 'CR: ' + fmt.format(new Date());
+    } catch {}
+    actualizarHeaderRegion();
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ──────────────────────────────────────────
+// ON CALL TOGGLE
+// ──────────────────────────────────────────
+function toggleOnCall() {
+  const cb = document.getElementById('isOnCall');
+  cb.checked = !cb.checked;
+  calcular();
+}
+
+function toggleFeriado() {
+  const cb = document.getElementById('isFeriado');
+  cb.checked = !cb.checked;
+  calcular();
+}
+
+// ──────────────────────────────────────────
+// RENDER GENERAL
+// ──────────────────────────────────────────
+function renderAll() {
+  renderTablaCobroTLA();
+  renderSelectorRegiones();
+}
+
+// ──────────────────────────────────────────
+// INICIO
+// ──────────────────────────────────────────
+renderAll();
+iniciarReloj();
+</script>
+</body>
+</html>

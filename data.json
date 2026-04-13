@@ -1,0 +1,88 @@
+{
+  "reglas": [
+    {
+      "id": "reg_diurna",
+      "tipoDia": "Regular",
+      "jornada": "Diurna/Ordinaria",
+      "multiplicador": 1.0,
+      "descripcion": "Lunes a Viernes de 06:01 a 21:59",
+      "dias": ["Lunes","Martes","Miércoles","Jueves","Viernes"],
+      "horaInicio": "06:01",
+      "horaFin": "21:59"
+    },
+    {
+      "id": "reg_nocturna",
+      "tipoDia": "Regular",
+      "jornada": "Nocturna/Extraordinaria",
+      "multiplicador": 1.5,
+      "descripcion": "Lunes a Viernes de 22:00 a 06:00",
+      "dias": ["Lunes","Martes","Miércoles","Jueves","Viernes"],
+      "horaInicio": "22:00",
+      "horaFin": "06:00"
+    },
+    {
+      "id": "ext_diurna",
+      "tipoDia": "Extraordinario",
+      "jornada": "Diurna/Ordinaria",
+      "multiplicador": 1.5,
+      "descripcion": "Sábado y Domingo de 07:01 a 21:59",
+      "dias": ["Sábado","Domingo"],
+      "horaInicio": "07:01",
+      "horaFin": "21:59"
+    },
+    {
+      "id": "ext_nocturna",
+      "tipoDia": "Extraordinario",
+      "jornada": "Nocturna/Extraordinaria",
+      "multiplicador": 2.0,
+      "descripcion": "Sáb 22:00→Dom 07:00 y Dom 22:00→Lun 07:00",
+      "dias": ["Sábado","Domingo","Lunes"],
+      "horaInicio": "22:00",
+      "horaFin": "07:00"
+    },
+    {
+      "id": "fer_diurna",
+      "tipoDia": "Feriado",
+      "jornada": "Diurna/Ordinaria",
+      "multiplicador": 2.0,
+      "descripcion": "Feriado de 06:01 a 21:59",
+      "dias": ["Feriado"],
+      "horaInicio": "06:01",
+      "horaFin": "21:59"
+    },
+    {
+      "id": "fer_nocturna",
+      "tipoDia": "Feriado",
+      "jornada": "Nocturna/Extraordinaria",
+      "multiplicador": 2.0,
+      "descripcion": "Feriado de 22:00 a 06:00",
+      "dias": ["Feriado"],
+      "horaInicio": "22:00",
+      "horaFin": "06:00"
+    },
+    {
+      "id": "oncall",
+      "tipoDia": "OnCall",
+      "jornada": "Diurna/Ordinaria y Nocturna/Extraordinaria",
+      "multiplicador": 0.2,
+      "descripcion": "Solo disponibilidad sin actividad",
+      "dias": ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo","Feriado"],
+      "horaInicio": "00:00",
+      "horaFin": "23:59"
+    }
+  ],
+  "regiones": [
+    {
+      "id": "cr",
+      "nombre": "Costa Rica",
+      "timezone": "America/Costa_Rica",
+      "pais": "Costa Rica (UTC-6)"
+    },
+    {
+      "id": "de",
+      "nombre": "Alemania",
+      "timezone": "Europe/Berlin",
+      "pais": "Alemania (UTC+1/+2)"
+    }
+  ]
+}
