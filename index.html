@@ -79,6 +79,7 @@
     .form-group { display: flex; flex-direction: column; gap: 5px; }
     .form-group label { font-size: 0.8rem; font-weight: 600; color: #546e7a; }
     .form-group select,
+    .form-group input[type="date"],
     .form-group input[type="time"],
     .form-group input[type="text"],
     .form-group input[type="number"] {
@@ -345,8 +346,13 @@
       </div>
       <div class="form-grid">
         <div class="form-group">
+          <label>Fecha</label>
+          <input type="date" id="fechaSeleccionada" onchange="onFechaCambio()">
+        </div>
+
+        <div class="form-group">
           <label>Día de la semana</label>
-          <select id="diaSemana" onchange="calcular()">
+          <select id="diaSemana" onchange="onDiaCambio()">
             <option value="">— Seleccione —</option>
             <option value="Lunes">Lunes</option>
             <option value="Martes">Martes</option>
@@ -359,14 +365,6 @@
         </div>
 
         <div class="form-group">
-          <label>Feriado</label>
-          <div class="oncall-row" style="background:#fff3e0;border-color:#ffcc80" onclick="toggleFeriado()">
-            <input type="checkbox" id="isFeriado" onchange="calcular()" style="accent-color:#e65100">
-            <label for="isFeriado" style="color:#bf360c">🎉 Día feriado</label>
-          </div>
-        </div>
-
-        <div class="form-group">
           <label>Hora de inicio</label>
           <input type="time" id="horaInicio" value="08:00" onchange="calcular()">
         </div>
@@ -374,6 +372,14 @@
         <div class="form-group">
           <label>Hora de fin</label>
           <input type="time" id="horaFin" value="17:00" onchange="calcular()">
+        </div>
+
+        <div class="form-group" style="grid-column:1/-1">
+          <label>Feriado</label>
+          <div class="oncall-row" style="background:#fff3e0;border-color:#ffcc80" onclick="toggleFeriado()">
+            <input type="checkbox" id="isFeriado" onchange="calcular()" style="accent-color:#e65100">
+            <label for="isFeriado" style="color:#bf360c">🎉 Día feriado</label>
+          </div>
         </div>
 
         <div class="form-group" style="grid-column:1/-1">
@@ -780,24 +786,28 @@ function renderResultado(segs, hInicio, hFin) {
  * Convierte "HH:MM" interpretado en la zona horaria indicada a un objeto Date (UTC).
  * Usa el iterativo de 3 pasos para compensar el offset del timezone correctamente.
  */
-function horaEnZonaAUTC(horaStr, timezone) {
-  const now = new Date();
-  // Fecha de hoy en la zona horaria objetivo (formato YYYY-MM-DD via locale sv)
-  const fechaHoy = new Intl.DateTimeFormat('sv', {
+/**
+ * Convierte "HH:MM" interpretado en la zona horaria indicada a un objeto Date (UTC).
+ * Si se pasa fechaStr (YYYY-MM-DD), la usa como fecha base;
+ * de lo contrario usa la fecha actual en esa zona horaria.
+ */
+function horaEnZonaAUTC(horaStr, timezone, fechaStr) {
+  // Si hay fecha seleccionada la usamos directamente; si no, calculamos la de hoy en esa TZ
+  const fechaBase = fechaStr || new Intl.DateTimeFormat('sv', {
     timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit'
-  }).format(now); // "YYYY-MM-DD"
+  }).format(new Date());
 
   // Punto de partida: tratar como UTC puro
-  let ref = new Date(`${fechaHoy}T${horaStr}:00Z`);
+  let ref = new Date(`${fechaBase}T${horaStr}:00Z`);
 
-  // 3 iteraciones son suficientes para converger en cualquier offset
+  // 3 iteraciones para converger en cualquier offset
   for (let i = 0; i < 3; i++) {
     const localStr = new Intl.DateTimeFormat('sv', {
       timeZone: timezone,
       year: 'numeric', month: '2-digit', day: '2-digit',
       hour: '2-digit', minute: '2-digit'
     }).format(ref); // "YYYY-MM-DD HH:MM"
-    const wantedMs = new Date(`${fechaHoy}T${horaStr}:00Z`).getTime();
+    const wantedMs = new Date(`${fechaBase}T${horaStr}:00Z`).getTime();
     const gotMs    = new Date(localStr.replace(' ', 'T') + ':00Z').getTime();
     ref = new Date(ref.getTime() + (wantedMs - gotMs));
   }
@@ -809,8 +819,11 @@ function actualizarZonas(horaInicio) {
   const regionActiva  = appData.regiones.find(r => r.id === selId) || appData.regiones[0];
   const crRegion      = appData.regiones.find(r => r.timezone === 'America/Costa_Rica');
 
+  // Usar la fecha seleccionada en el formulario como base para la conversión
+  const fechaSeleccionada = document.getElementById('fechaSeleccionada').value || undefined;
+
   // La hora ingresada está en la zona horaria de la región activa → convertir a UTC
-  const ref = horaEnZonaAUTC(horaInicio, regionActiva.timezone);
+  const ref = horaEnZonaAUTC(horaInicio, regionActiva.timezone, fechaSeleccionada);
 
   // Orden de tarjetas: región activa primero, Costa Rica segunda (si es diferente), resto
   const orden = [regionActiva];
@@ -940,6 +953,49 @@ function iniciarReloj() {
 }
 
 // ──────────────────────────────────────────
+// FECHA ↔ DÍA SEMANA (sincronización)
+// ──────────────────────────────────────────
+const JS_DAY_MAP = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
+/** Cuando cambia el input de fecha → actualiza el selector de día */
+function onFechaCambio() {
+  const val = document.getElementById('fechaSeleccionada').value;
+  if (!val) { calcular(); return; }
+  const [y, m, d] = val.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const diaNombre = JS_DAY_MAP[date.getUTCDay()];
+  document.getElementById('diaSemana').value = diaNombre;
+  calcular();
+}
+
+/** Cuando cambia el selector de día → busca la próxima fecha con ese día */
+function onDiaCambio() {
+  const dia = document.getElementById('diaSemana').value;
+  if (!dia) { calcular(); return; }
+  const targetDay = JS_DAY_MAP.indexOf(dia);
+  if (targetDay === -1) { calcular(); return; }
+  const hoy = new Date();
+  const diff = (targetDay - hoy.getDay() + 7) % 7;
+  const target = new Date(hoy);
+  target.setDate(hoy.getDate() + diff);
+  const yyyy = target.getFullYear();
+  const mm = String(target.getMonth() + 1).padStart(2, '0');
+  const dd = String(target.getDate()).padStart(2, '0');
+  document.getElementById('fechaSeleccionada').value = `${yyyy}-${mm}-${dd}`;
+  calcular();
+}
+
+/** Inicializa la fecha con hoy y sincroniza el día */
+function inicializarFecha() {
+  const hoy = new Date();
+  const yyyy = hoy.getFullYear();
+  const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+  const dd = String(hoy.getDate()).padStart(2, '0');
+  document.getElementById('fechaSeleccionada').value = `${yyyy}-${mm}-${dd}`;
+  document.getElementById('diaSemana').value = JS_DAY_MAP[hoy.getDay()];
+}
+
+// ──────────────────────────────────────────
 // ON CALL TOGGLE
 // ──────────────────────────────────────────
 function toggleOnCall() {
@@ -960,6 +1016,7 @@ function toggleFeriado() {
 function renderAll() {
   renderTablaCobroTLA();
   renderSelectorRegiones();
+  inicializarFecha();
 }
 
 // ──────────────────────────────────────────
